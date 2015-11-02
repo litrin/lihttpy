@@ -13,8 +13,8 @@
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
 #
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
 #
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -25,115 +25,41 @@
 # SOFTWARE.
 #
 
+__version__ = "1.0"
+import posixpath
+import urllib
 import os
-import socket
 import optparse
-import mimetypes
+
+from SimpleHTTPServer import SimpleHTTPRequestHandler
+from BaseHTTPServer import HTTPServer
+
+DOCUMENT_ROOT = None
 
 
-class Content:
-    HttpHeader = '''\
-HTTP/1.1 %s %s
-Context-Type: %s
-Server: lihttpy
-Context-Length: '''
+class Server(SimpleHTTPRequestHandler):
+    server_version = "lihttpy/" + __version__
 
-    Path = None
+    def translate_path(self, path):
+        path = path.split('?', 1)[0].split('#', 1)[0]
+        trailing_slash = path.rstrip().endswith('/')
+        path = posixpath.normpath(urllib.unquote(path))
+        words = path.split('/')
 
-    def __init__(self, document_root, path):
-        self.Path = path
-        if "/" != path:
-            self.RealPath = "%s%s" % (document_root, self.Path)
-        else:
-            self.RealPath = document_root
+        global DOCUMENT_ROOT
+        path = DOCUMENT_ROOT
+        for word in words:
+            if word is None:
+                continue
+            drive, word = os.path.splitdrive(word)
+            head, word = os.path.split(word)
+            if word in (os.curdir, os.pardir):
+                continue
+            path = os.path.join(path, word)
+        if trailing_slash:
+            path += '/'
 
-    def build(self):
-        try:
-            if os.path.isfile(self.RealPath):
-                f = open(self.RealPath, "r")
-                body = "".join(f.readlines())
-                f.close()
-                mime = mimetypes.guess_type(self.RealPath)[0]
-            else:
-                body = self.index()
-                mime = "text/html"
-
-            header = self.HttpHeader % (200, "OK", mime)
-            return self._format_content(header, body)
-
-        except:
-            return self.error(404, "NOT FOUND")
-
-    def index(self):
-
-        if "/" != self.Path:
-            file_list = ["<li><a href='../'>..</a>"]
-            path = self.Path
-
-        else:
-            file_list = []
-            path = ""
-
-        for i in os.listdir(self.RealPath):
-            file_list.append("<li><a href='%s/%s'>%s</a>" % (path, i, i))
-
-        return "<html><ul>%s</ul></html>" % '\n'.join(file_list)
-
-    def _format_content(self, header, body):
-        return "%s %d\n\n%s\n\n" % (header, len(body), body)
-
-    def error(self, code, desc):
-        header = self.HttpHeader % (code, desc, "text/html")
-        body = "%s %s" % (code, desc)
-
-        return self._format_content(header, body)
-
-
-class HttpServer:
-    Options = None
-    Socket = None
-    Signal = True
-
-    def __init__(self, options):
-        self.Options = options
-
-    def shutdown(self):
-        self.Signal = False
-
-    def start(self):
-        self.build_socket()
-        # Loop
-        while self.Signal:
-            try:
-                (connection, client) = self.Socket.accept()
-                self.do_transcation(connection, client)
-            except socket.error, e:
-                print "Connection fail!"
-            finally:
-                connection.close()
-
-        self.Socket.shutdown()
-
-    def do_transcation(self, connection, client):
-        PACKAGE_LENGTH = 1 << 9
-        data = connection.recv(PACKAGE_LENGTH)
-        (method, path, protocol) = self.get_reciver(data)
-
-        content = Content(self.Options.document_root, path)
-        response = content.build()
-
-        connection.send(response)
-
-    def build_socket(self):
-        self.Socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        port = (self.Options.address, self.Options.port)
-
-        self.Socket.bind(port)
-        self.Socket.listen(2)
-
-    def get_reciver(self, data):
-        request_body = data.split("\r\n")
-        return tuple(request_body[0].split(" "))
+        return path
 
 
 if __name__ == '__main__':
@@ -147,7 +73,24 @@ if __name__ == '__main__':
     opt.add_option("-p", "--port", default=8080, type=int,
                    help="Port to listen, 8080 is the default")
 
+    opt.add_option("-b", "--browser", default=None,
+                   help="Open portal by default browser.")
+
     (options, args) = opt.parse_args()
 
-    a = HttpServer(options)
-    a.start()
+    server_address = (options.address, options.port)
+    httpd = HTTPServer(server_address, Server)
+
+    sa = httpd.socket.getsockname()
+    print "Serving HTTP on", sa[0], "port", sa[1], "..."
+
+    if options.browser is not None:
+        try:
+            import webbrowser
+
+            url = "http://%s:%s/" % (options.address, options.port)
+            webbrowser.open(url)
+        except:
+            pass
+
+    httpd.serve_forever()
