@@ -73,18 +73,17 @@ if __name__ == '__main__':
     opt.add_option("-p", "--port", default=8080, type=int,
                    help="Port to listen, 8080 is the default")
 
-    opt.add_option("-b", "--browser", default=None,
+    opt.add_option("-b", "--browser", default=False, action="store_true",
                    help="Open portal by default browser.")
 
     (options, args) = opt.parse_args()
-
     server_address = (options.address, options.port)
     httpd = HTTPServer(server_address, Server)
 
     sa = httpd.socket.getsockname()
     print "Serving HTTP on", sa[0], "port", sa[1], "..."
 
-    if options.browser is not None:
+    if options.browser:
         try:
             import webbrowser
 
