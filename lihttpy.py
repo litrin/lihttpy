@@ -127,7 +127,7 @@ class HttpServer:
     def build_socket(self):
         self.Socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         port = (self.Options.address, self.Options.port)
-        print self.Options
+
         self.Socket.bind(port)
         self.Socket.listen(2)
 
@@ -149,6 +149,5 @@ if __name__ == '__main__':
 
     (options, args) = opt.parse_args()
 
-    print options
     a = HttpServer(options)
     a.start()
