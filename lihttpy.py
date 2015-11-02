@@ -77,6 +77,7 @@ if __name__ == '__main__':
                    help="Open portal by default browser.")
 
     (options, args) = opt.parse_args()
+    DOCUMENT_ROOT = options.document_root
     server_address = (options.address, options.port)
     httpd = HTTPServer(server_address, Server)
 
