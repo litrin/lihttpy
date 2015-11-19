@@ -28,9 +28,9 @@
 __version__ = "1.1"
 import posixpath
 import urllib
-import os
+from cStringIO import StringIO
+import os, sys
 import optparse
-
 from SimpleHTTPServer import SimpleHTTPRequestHandler
 from BaseHTTPServer import HTTPServer
 
@@ -72,6 +72,39 @@ class Server(SimpleHTTPRequestHandler):
             path += '/'
 
         return path
+
+    def list_directory(self, path):
+        try:
+            list = os.listdir(path)
+        except os.error:
+            self.send_error(404, "No permission to list directory")
+            return None
+
+        displaypath = urllib.url2pathname(urllib.unquote(self.path))
+        content = ['''<html><title>Directory listing for %s</title>
+                <body><h2>Directory listing for %s</h2><hr><ul>
+            ''' % (displaypath, displaypath)]
+
+        if path != options.document_root:
+            content.append("<li><a href='..'>..</a>")
+
+        list.sort(key=lambda a: a.lower())
+        for name in list:
+            content.append('<li><a href="%s">%s</a>'
+                     % (urllib.quote(name), urllib.url2pathname(name)))
+
+        content.append("</ul><hr></body></html>")
+        content = "".join(content)
+
+        self.send_response(200)
+        encoding = sys.getfilesystemencoding()
+        self.send_header("Content-type", "text/html; charset=%s" % encoding)
+        self.send_header("Content-Length", len(content))
+        self.end_headers()
+
+        handle = StringIO(content)
+        self.copyfile(handle, self.wfile)
+        handle.close()
 
 
 if __name__ == '__main__':
