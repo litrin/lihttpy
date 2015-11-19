@@ -4,7 +4,7 @@ It provide a tiny http server for you which may help you to do web front-end dev
 
 ## How to use it
 
-Usage: server.py [options]
+Usage: lihttpy.py [options]
 
      Options:
      -h, --help            show this help message and exit
