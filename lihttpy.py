@@ -25,7 +25,7 @@
 # SOFTWARE.
 #
 
-__version__ = "1.0"
+__version__ = "1.1"
 import posixpath
 import urllib
 import os
@@ -34,7 +34,20 @@ import optparse
 from SimpleHTTPServer import SimpleHTTPRequestHandler
 from BaseHTTPServer import HTTPServer
 
-DOCUMENT_ROOT = None
+opt = optparse.OptionParser()
+opt.add_option("-d", "--document-root",
+               help="Define a path as portal root", default=os.getcwd())
+
+opt.add_option("--address", default="127.0.0.1",
+               help="Address to listen, 127.0.0.1 is the default")
+
+opt.add_option("-p", "--port", default=8080, type=int,
+               help="Port to listen, 8080 is the default")
+
+opt.add_option("-b", "--browser", default=False, action="store_true",
+               help="Open portal by default browser.")
+
+(options, args) = opt.parse_args()
 
 
 class Server(SimpleHTTPRequestHandler):
@@ -46,8 +59,7 @@ class Server(SimpleHTTPRequestHandler):
         path = posixpath.normpath(urllib.unquote(path))
         words = path.split('/')
 
-        global DOCUMENT_ROOT
-        path = DOCUMENT_ROOT
+        path = options.document_root
         for word in words:
             if word is None:
                 continue
@@ -63,26 +75,11 @@ class Server(SimpleHTTPRequestHandler):
 
 
 if __name__ == '__main__':
-    opt = optparse.OptionParser()
-    opt.add_option("-d", "--document-root",
-                   help="Define a path as portal root", default=os.getcwd())
 
-    opt.add_option("--address", default="127.0.0.1",
-                   help="Address to listen, 127.0.0.1 is the default")
-
-    opt.add_option("-p", "--port", default=8080, type=int,
-                   help="Port to listen, 8080 is the default")
-
-    opt.add_option("-b", "--browser", default=False, action="store_true",
-                   help="Open portal by default browser.")
-
-    (options, args) = opt.parse_args()
-    DOCUMENT_ROOT = options.document_root
     server_address = (options.address, options.port)
     httpd = HTTPServer(server_address, Server)
 
-    sa = httpd.socket.getsockname()
-    print "Serving HTTP on", sa[0], "port", sa[1], "..."
+    print "Serving HTTP on", options.address, "port", options.port, "..."
 
     if options.browser:
         try:
