@@ -57,7 +57,7 @@ opt.add_option("-b", "--browser", default=False, action="store_true",
 class Server(BaseHTTPRequestHandler):
     server_version = "lihttpy/" + __version__
 
-    def send_head(self):
+    def do_GET(self):
         path = self.translate_path(self.path)
         if os.path.isdir(path):
             for index in options.index.split(","):
@@ -85,6 +85,9 @@ class Server(BaseHTTPRequestHandler):
         except:
             f.close()
             raise
+
+    def do_HEAD(self):
+        self.do_GET()
 
     def translate_path(self, path):
         path = path.split('?', 1)[0].split('#', 1)[0]
