@@ -66,7 +66,8 @@ class Server(BaseHTTPRequestHandler):
                     path = index
                     break
             else:
-                return self.list_directory(path)
+                content = self.list_directory(path)
+                self.copyfile(content, self.wfile)
 
         ctype = self.get_mimetype(path)
         try:
@@ -81,7 +82,8 @@ class Server(BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(fs[6]))
             self.send_header("Last-Modified", self.date_time_string(fs.st_mtime))
             self.end_headers()
-            return f
+            return self.copyfile(f, self.wfile)
+
         except:
             f.close()
             raise
