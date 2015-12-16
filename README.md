@@ -11,5 +11,6 @@ Usage: lihttpy.py [options]
      -d DOCUMENT_ROOT, --document-root=DOCUMENT_ROOT
                            Define a path as portal root
      --address=ADDRESS     Address to listen, 127.0.0.1 is the default
+     -i, --index=FILE      Directory index, default is index.html
      -p PORT, --port=PORT  Port to listen, 8080 is the default
      -b --browser          Open portal by default browser

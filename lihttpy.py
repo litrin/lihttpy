@@ -29,10 +29,11 @@ __version__ = "1.1"
 import posixpath
 import urllib
 from cStringIO import StringIO
-import os, sys
+import os
+import sys
+import mimetypes
 import optparse
-from SimpleHTTPServer import SimpleHTTPRequestHandler
-from BaseHTTPServer import HTTPServer
+from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
 
 opt = optparse.OptionParser()
 opt.add_option("-d", "--document-root",
@@ -40,6 +41,9 @@ opt.add_option("-d", "--document-root",
 
 opt.add_option("--address", default="127.0.0.1",
                help="Address to listen, 127.0.0.1 is the default")
+
+opt.add_option("-i", "--index", default="index.html",
+               help="Directory index, default is index.html")
 
 opt.add_option("-p", "--port", default=8080, type=int,
                help="Port to listen, 8080 is the default")
@@ -50,8 +54,37 @@ opt.add_option("-b", "--browser", default=False, action="store_true",
 (options, args) = opt.parse_args()
 
 
-class Server(SimpleHTTPRequestHandler):
+class Server(BaseHTTPRequestHandler):
     server_version = "lihttpy/" + __version__
+
+    def send_head(self):
+        path = self.translate_path(self.path)
+        if os.path.isdir(path):
+            for index in options.index.split(","):
+                index = os.path.join(path, index)
+                if os.path.exists(index):
+                    path = index
+                    break
+            else:
+                return self.list_directory(path)
+
+        ctype = self.get_mimetype(path)
+        try:
+            f = open(path, 'rb')
+        except IOError:
+            self.send_error(404, "File not found")
+            return None
+        try:
+            self.send_response(200)
+            self.send_header("Content-type", ctype)
+            fs = os.fstat(f.fileno())
+            self.send_header("Content-Length", str(fs[6]))
+            self.send_header("Last-Modified", self.date_time_string(fs.st_mtime))
+            self.end_headers()
+            return f
+        except:
+            f.close()
+            raise
 
     def translate_path(self, path):
         path = path.split('?', 1)[0].split('#', 1)[0]
@@ -105,6 +138,17 @@ class Server(SimpleHTTPRequestHandler):
         handle = StringIO(content)
         self.copyfile(handle, self.wfile)
         handle.close()
+
+    def get_mimetype(self, path):
+        m = mimetypes.MimeTypes()
+        return m.guess_type(path)
+
+    def copyfile(self, source, outputfile, length=16*1024):
+        while True:
+            buf = source.read(length)
+            if not buf:
+                break
+            outputfile.write(buf)
 
 
 if __name__ == '__main__':
